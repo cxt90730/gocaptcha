@@ -109,7 +109,7 @@ func (captcha *CaptchaImage) DrawHollowLine() *CaptchaImage {
 	first := (captcha.Width / 20)
 	end := first * 19
 
-	lineColor := color.RGBA{R: 0, G: 0, B: 0, A: 255}
+	lineColor := RandDeepColor()
 
 	x1 := float64(r.Intn(first))
 	//y1 := float64(r.Intn(y)+y);
