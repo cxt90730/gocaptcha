@@ -24,12 +24,15 @@ import (
 )
 
 var (
-	dpi                 = flag.Float64("dpi", 72, "screen resolution in Dots Per Inch")
-	r                   = rand.New(rand.NewSource(time.Now().UnixNano()))
-	FontFamily []string = make([]string, 0)
+	dpi        = flag.Float64("dpi", 64, "screen resolution in Dots Per Inch")
+	r          = rand.New(rand.NewSource(time.Now().UnixNano()))
+	FontFamily = make([]string, 0)
 )
 
-const txtChars = "AaCcDdEeFfGgHhJjKkLMmNnPpQqRrSsTtUuVvWwXxYtZ012346789"
+const (
+	txtChars = "AaCcDdEeFfGgHhJjKkLMmNnPpQqRrSsTtUuVvWwXxYtZ012346789"
+	digChars = "0123456789"
+)
 
 const (
 	//图片格式
@@ -43,9 +46,9 @@ const (
 )
 
 type CaptchaImage struct {
-	nrgba   *image.NRGBA
-	width   int
-	height  int
+	NRGBA   *image.NRGBA
+	Width   int
+	Height  int
 	Complex int
 }
 
@@ -71,16 +74,16 @@ func ReadFonts(dirPth string, suffix string) (err error) {
 }
 
 //新建一个图片对象
-func NewCaptchaImage(width int, height int, bgColor color.RGBA) (*CaptchaImage, error) {
+func NewCaptchaImage(Width int, Height int, bgColor color.RGBA) (*CaptchaImage, error) {
 
-	m := image.NewNRGBA(image.Rect(0, 0, width, height))
+	m := image.NewNRGBA(image.Rect(0, 0, Width, Height))
 
 	draw.Draw(m, m.Bounds(), &image.Uniform{bgColor}, image.ZP, draw.Src)
 
 	return &CaptchaImage{
-		nrgba:  m,
-		height: height,
-		width:  width,
+		NRGBA:  m,
+		Height: Height,
+		Width:  Width,
 	}, nil
 }
 
@@ -88,13 +91,13 @@ func NewCaptchaImage(width int, height int, bgColor color.RGBA) (*CaptchaImage, 
 func (this *CaptchaImage) SaveImage(w io.Writer, imageFormat int) error {
 
 	if imageFormat == ImageFormatPng {
-		return png.Encode(w, this.nrgba)
+		return png.Encode(w, this.NRGBA)
 	}
 	if imageFormat == ImageFormatJpeg {
-		return jpeg.Encode(w, this.nrgba, &jpeg.Options{100})
+		return jpeg.Encode(w, this.NRGBA, &jpeg.Options{100})
 	}
 	if imageFormat == ImageFormatGif {
-		return gif.Encode(w, this.nrgba, &gif.Options{NumColors: 256})
+		return gif.Encode(w, this.NRGBA, &gif.Options{NumColors: 256})
 	}
 
 	return errors.New("Not supported image format")
@@ -103,10 +106,10 @@ func (this *CaptchaImage) SaveImage(w io.Writer, imageFormat int) error {
 //添加一个较粗的空白直线
 func (captcha *CaptchaImage) DrawHollowLine() *CaptchaImage {
 
-	first := (captcha.width / 20)
+	first := (captcha.Width / 20)
 	end := first * 19
 
-	lineColor := color.RGBA{R: 245, G: 250, B: 251, A: 255}
+	lineColor := color.RGBA{R: 0, G: 0, B: 0, A: 255}
 
 	x1 := float64(r.Intn(first))
 	//y1 := float64(r.Intn(y)+y);
@@ -118,19 +121,19 @@ func (captcha *CaptchaImage) DrawHollowLine() *CaptchaImage {
 		multiple = multiple * -1.0
 	}
 
-	w := captcha.height / 20
+	w := captcha.Height / 20
 
 	for ; x1 < x2; x1++ {
 
-		y := math.Sin(x1*math.Pi*multiple/float64(captcha.width)) * float64(captcha.height/3)
+		y := math.Sin(x1*math.Pi*multiple/float64(captcha.Width)) * float64(captcha.Height/3)
 
 		if multiple < 0 {
-			y = y + float64(captcha.height/2)
+			y = y + float64(captcha.Height/2)
 		}
-		captcha.nrgba.Set(int(x1), int(y), lineColor)
+		captcha.NRGBA.Set(int(x1), int(y), lineColor)
 
 		for i := 0; i <= w; i++ {
-			captcha.nrgba.Set(int(x1), int(y)+i, lineColor)
+			captcha.NRGBA.Set(int(x1), int(y)+i, lineColor)
 		}
 	}
 
@@ -142,36 +145,36 @@ func (captcha *CaptchaImage) DrawSineLine() *CaptchaImage {
 	var py float64 = 0
 
 	//振幅
-	a := r.Intn(captcha.height/2)
+	a := r.Intn(captcha.Height / 2)
 
 	//Y轴方向偏移量
-	b := Random(int64(-captcha.height/4),int64(captcha.height/4))
+	b := Random(int64(-captcha.Height/4), int64(captcha.Height/4))
 
 	//X轴方向偏移量
-	f := Random(int64(-captcha.height/4),int64(captcha.height/4))
+	f := Random(int64(-captcha.Height/4), int64(captcha.Height/4))
 	// 周期
 	var t float64 = 0
-	if(captcha.height > captcha.width/2){
-		t = Random(int64(captcha.width/2),int64(captcha.height))
-	}else{
-		t = Random(int64(captcha.height),int64(captcha.width/2))
+	if captcha.Height > captcha.Width/2 {
+		t = Random(int64(captcha.Width/2), int64(captcha.Height))
+	} else {
+		t = Random(int64(captcha.Height), int64(captcha.Width/2+1))
 	}
 	w := float64((2 * math.Pi) / t)
 
 	// 曲线横坐标起始位置
 	px1 := 0
-	px2 := int(Random(int64(float64(captcha.width) * 0.8),int64(captcha.width)))
+	px2 := int(Random(int64(float64(captcha.Width)*0.8), int64(captcha.Width)))
 
 	c := color.RGBA{R: uint8(r.Intn(150)), G: uint8(r.Intn(150)), B: uint8(r.Intn(150)), A: uint8(255)}
 
-	for px = px1;px < px2;px ++ {
-		if(w != 0){
-			py = float64(a) * math.Sin(w * float64(px) + f) + b + (float64(captcha.width) / float64(5))
-			i := captcha.height / 5
+	for px = px1; px < px2; px++ {
+		if w != 0 {
+			py = float64(a)*math.Sin(w*float64(px)+f) + b + (float64(captcha.Width) / float64(5))
+			i := captcha.Height / 5
 			for i > 0 {
-				captcha.nrgba.Set(px + i,int(py),c)
+				captcha.NRGBA.Set(px+i, int(py), c)
 				//fmt.Println(px + i,int(py) )
-				i --
+				i--
 			}
 		}
 	}
@@ -182,10 +185,10 @@ func (captcha *CaptchaImage) DrawSineLine() *CaptchaImage {
 //画一条直线
 func (captcha *CaptchaImage) Drawline(num int) *CaptchaImage {
 
-	first := (captcha.width / 10)
+	first := (captcha.Width / 10)
 	end := first * 9
 
-	y := captcha.height / 3
+	y := captcha.Height / 3
 
 	for i := 0; i < num; i++ {
 
@@ -219,11 +222,11 @@ func (captcha *CaptchaImage) drawBeeline(point1 Point, point2 Point, lineColor c
 	}
 	err := dx - dy
 	for {
-		captcha.nrgba.Set(point1.X, point1.Y, lineColor)
-		captcha.nrgba.Set(point1.X+1, point1.Y, lineColor)
-		captcha.nrgba.Set(point1.X-1, point1.Y, lineColor)
-		captcha.nrgba.Set(point1.X+2, point1.Y, lineColor)
-		captcha.nrgba.Set(point1.X-2, point1.Y, lineColor)
+		captcha.NRGBA.Set(point1.X, point1.Y, lineColor)
+		captcha.NRGBA.Set(point1.X+1, point1.Y, lineColor)
+		captcha.NRGBA.Set(point1.X-1, point1.Y, lineColor)
+		captcha.NRGBA.Set(point1.X+2, point1.Y, lineColor)
+		captcha.NRGBA.Set(point1.X-2, point1.Y, lineColor)
 		if point1.X == point2.X && point1.Y == point2.Y {
 			return
 		}
@@ -241,13 +244,13 @@ func (captcha *CaptchaImage) drawBeeline(point1 Point, point2 Point, lineColor c
 
 //画边框.
 func (captcha *CaptchaImage) DrawBorder(borderColor color.RGBA) *CaptchaImage {
-	for x := 0; x < captcha.width; x++ {
-		captcha.nrgba.Set(x, 0, borderColor)
-		captcha.nrgba.Set(x, captcha.height-1, borderColor)
+	for x := 0; x < captcha.Width; x++ {
+		captcha.NRGBA.Set(x, 0, borderColor)
+		captcha.NRGBA.Set(x, captcha.Height-1, borderColor)
 	}
-	for y := 0; y < captcha.height; y++ {
-		captcha.nrgba.Set(0, y, borderColor)
-		captcha.nrgba.Set(captcha.width-1, y, borderColor)
+	for y := 0; y < captcha.Height; y++ {
+		captcha.NRGBA.Set(0, y, borderColor)
+		captcha.NRGBA.Set(captcha.Width-1, y, borderColor)
 	}
 	return captcha
 }
@@ -262,17 +265,17 @@ func (captcha *CaptchaImage) DrawNoise(complex int) *CaptchaImage {
 	} else if complex == CaptchaComplexHigh {
 		density = 8
 	}
-	maxSize := (captcha.height * captcha.width) / density
+	maxSize := (captcha.Height * captcha.Width) / density
 
 	for i := 0; i < maxSize; i++ {
 
-		rw := r.Intn(captcha.width)
-		rh := r.Intn(captcha.height)
+		rw := r.Intn(captcha.Width)
+		rh := r.Intn(captcha.Height)
 
-		captcha.nrgba.Set(rw, rh, RandColor())
+		captcha.NRGBA.Set(rw, rh, RandColor())
 		size := r.Intn(maxSize)
 		if size%3 == 0 {
-			captcha.nrgba.Set(rw+1, rh+1, RandColor())
+			captcha.NRGBA.Set(rw+1, rh+1, RandColor())
 		}
 	}
 	return captcha
@@ -289,22 +292,22 @@ func (captcha *CaptchaImage) DrawTextNoise(complex int) error {
 		density = 1000
 	}
 
-	maxSize := (captcha.height * captcha.width) / density
+	maxSize := (captcha.Height * captcha.Width) / density
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	c := freetype.NewContext()
 	c.SetDPI(*dpi)
 
-	c.SetClip(captcha.nrgba.Bounds())
-	c.SetDst(captcha.nrgba)
+	c.SetClip(captcha.NRGBA.Bounds())
+	c.SetDst(captcha.NRGBA)
 	c.SetHinting(font.HintingFull)
-	rawFontSize := float64(captcha.height) / (1 + float64(r.Intn(7))/float64(10))
+	rawFontSize := float64(captcha.Height) / (1 + float64(r.Intn(7))/float64(10))
 
 	for i := 0; i < maxSize; i++ {
 
-		rw := r.Intn(captcha.width)
-		rh := r.Intn(captcha.height)
+		rw := r.Intn(captcha.Width)
+		rh := r.Intn(captcha.Height)
 
 		text := RandText(1)
 		fontSize := rawFontSize/2 + float64(r.Intn(5))
@@ -334,17 +337,17 @@ func (captcha *CaptchaImage) DrawText(text string) error {
 	c := freetype.NewContext()
 	c.SetDPI(*dpi)
 
-	c.SetClip(captcha.nrgba.Bounds())
-	c.SetDst(captcha.nrgba)
-	c.SetHinting(font.HintingFull)
+	c.SetClip(captcha.NRGBA.Bounds())
+	c.SetDst(captcha.NRGBA)
+	c.SetHinting(font.HintingVertical)
 
-	fontWidth := captcha.width / len(text)
+	fontWidth := captcha.Width / len(text)
 
 	for i, s := range text {
 
-		fontSize := float64(captcha.height) / (1 + float64(r.Intn(7))/float64(9))
+		fontSize := float64(captcha.Height) / (1 + float64(r.Intn(7))/float64(9))
 
-		c.SetSrc(image.NewUniform(RandDeepColor()))
+		c.SetSrc(image.NewUniform(BlackColor()))
 		c.SetFontSize(fontSize)
 		f, err := RandFontFamily()
 
@@ -356,7 +359,7 @@ func (captcha *CaptchaImage) DrawText(text string) error {
 
 		x := int(fontWidth)*i + int(fontWidth)/int(fontSize)
 
-		y := 5 + r.Intn(captcha.height/2) + int(fontSize/2)
+		y := captcha.Height/2 - r.Intn(captcha.Height/4) + int(fontSize/2)
 
 		pt := freetype.Pt(x, y)
 
@@ -394,7 +397,7 @@ func RandDeepColor() color.RGBA {
 
 	randColor := RandColor()
 
-	increase := float64(30 + r.Intn(255))
+	increase := float64(128 + r.Intn(255))
 
 	red := math.Abs(math.Min(float64(randColor.R)-increase, 255))
 
@@ -404,12 +407,17 @@ func RandDeepColor() color.RGBA {
 	return color.RGBA{R: uint8(red), G: uint8(green), B: uint8(blue), A: uint8(255)}
 }
 
+//随机生成深色系.
+func BlackColor() color.RGBA {
+	return color.RGBA{R: uint8(0), G: uint8(0), B: uint8(0), A: uint8(255)}
+}
+
 //随机生成浅色.
 func RandLightColor() color.RGBA {
 
-	red := r.Intn(55) + 200
-	green := r.Intn(55) + 200
-	blue := r.Intn(55) + 200
+	red := r.Intn(35) + 220
+	green := r.Intn(35) + 220
+	blue := r.Intn(35) + 220
 
 	return color.RGBA{R: uint8(red), G: uint8(green), B: uint8(blue), A: uint8(255)}
 }
@@ -439,6 +447,17 @@ func RandText(num int) string {
 
 	for i := 0; i < num; i++ {
 		text = text + string(txtChars[r.Intn(textNum)])
+	}
+	return text
+}
+
+//生成随机数字.
+func RandNumber(num int) string {
+	textNum := len(digChars)
+	text := ""
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < num; i++ {
+		text = text + string(digChars[r.Intn(textNum)])
 	}
 	return text
 }
